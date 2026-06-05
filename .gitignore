@@ -1,0 +1,57 @@
+# ===============================================================================
+# VC-Wallet Platform — General Gitignore
+# Covers Flutter App, Python Backend, Docker Infrastructure, and IDEs
+# ===============================================================================
+
+# ═════════════════════════════════════════════════════════════════════════════
+# OS & System Files
+# ═════════════════════════════════════════════════════════════════════════════
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Environment Variables & Secrets (CRITICAL)
+# ═════════════════════════════════════════════════════════════════════════════
+# Never commit sensitive environment variables or secrets!
+.env
+.env.*
+*.env
+**/.env
+**/secrets/
+**/credentials/
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Editors & IDEs (VS Code, Android Studio, IntelliJ, etc.)
+# ═════════════════════════════════════════════════════════════════════════════
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Python Backend & Virtual Environments
+# ═════════════════════════════════════════════════════════════════════════════
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.venv/
+**/venv/
+**/ENV/
+**/env/
+**/*.egg-info/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.coverage
+**/htmlcov/
+
