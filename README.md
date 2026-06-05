@@ -16,24 +16,24 @@ El ecosistema está compuesto por los siguientes componentes integrados a travé
 
 ```mermaid
 graph TD
-    subgraph Cliente
-        App[App Móvil - Flutter]
-        WebWallet[Web Wallet - walt.id Nuxt]
+    subgraph "Cliente"
+        App["App Móvil - Flutter"]
+        WebWallet["Web Wallet - walt.id Nuxt"]
     end
 
-    subgraph Backend & API Gateway
-        BE[Backend API - FastAPI]
+    subgraph "Backend y API Gateway"
+        BE["Backend API - FastAPI"]
     end
 
-    subgraph Gestión de Identidad (IAM)
-        KC[Keycloak - OAuth2/OIDC]
-        DB[(PostgreSQL)]
+    subgraph "Gestión de Identidad (IAM)"
+        KC["Keycloak - OAuth2/OIDC"]
+        DB[("PostgreSQL")]
     end
 
-    subgraph Servicios SSI (walt.id Core)
-        Issuer[Issuer API - Emisión]
-        Verifier[Verifier API - Verificación]
-        WalletAPI[Wallet API - Custodia]
+    subgraph "Servicios SSI (walt.id Core)"
+        Issuer["Issuer API - Emisión"]
+        Verifier["Verifier API - Verificación"]
+        WalletAPI["Wallet API - Custodia"]
     end
 
     App -->|Autenticación OIDC| KC
