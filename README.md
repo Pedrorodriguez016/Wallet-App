@@ -61,35 +61,21 @@ graph TD
 
 Antes de comenzar, asegúrate de tener instalado:
 * **Docker** y **Docker Compose**
-* **Make** (herramienta de comandos para automatización, preinstalada en Linux/Mac; opcional en Windows a través de Chocolatey o WSL)
 * **Flutter SDK** y un emulador (Android/iOS) o dispositivo físico configurado para desarrollo.
 * **Python 3.10+** (solo si deseas correr el backend localmente fuera de Docker)
 
 ---
 
-##  Levantamiento con Docker Compose (Recomendado)
-
-El proyecto incluye un `Makefile` en la raíz para simplificar la gestión de los contenedores Docker. 
+##  Levantamiento con Docker Compose
 
 | Comando | Descripción |
 |---|---|
-| `make up` | Inicia todos los servicios en segundo plano (`postgres`, `keycloak`, `walt.id`, y `backend`). |
-| `make up-build` | Reconstruye las imágenes de Docker e inicia los servicios. |
-| `make down` | Detiene y elimina los contenedores activos. |
-| `make logs` | Visualiza los logs en tiempo real de todos los contenedores. |
-| `make status` | Muestra el estado actual de los contenedores (`docker compose ps`). |
-| `make urls` | Imprime un listado rápido con las direcciones locales de todos los servicios. |
-| `make clean` | Detiene los servicios y elimina los volúmenes asociados (útil para reiniciar la base de datos). |
-
-### Levantamiento manual (sin Make)
-Si no utilizas `make`, puedes correr los comandos equivalentes de Docker Compose:
-```bash
-# Iniciar servicios
-docker compose up -d
-
-# Detener servicios
-docker compose down
-```
+| `docker compose up -d` | Inicia todos los servicios en segundo plano (`postgres`, `keycloak`, `walt.id`, y `backend`). |
+| `docker compose up -d --build` | Reconstruye las imágenes de Docker e inicia los servicios. |
+| `docker compose down` | Detiene y elimina los contenedores activos. |
+| `docker compose logs -f` | Visualiza los logs en tiempo real de todos los contenedores. |
+| `docker compose ps` | Muestra el estado actual de los contenedores. |
+| `docker compose down -v` | Detiene los servicios y elimina los volúmenes asociados (útil para reiniciar la base de datos). |
 
 ---
 

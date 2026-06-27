@@ -4,7 +4,6 @@ Handles authentication flows, token exchange, and user management
 with Keycloak as the IAM backend.
 """
 
-import secrets
 import httpx
 from jose import jwt, JWTError
 
@@ -169,11 +168,8 @@ class KeycloakService:
 
     async def _impersonate_user(self, admin_token: str, user_id: str) -> dict:
         """
-        Issues tokens on behalf of a user by temporarily setting a random
-        password and using the direct-access (password) grant, then clearing it.
+        Issues tokens on behalf of a user using Keycloak's token exchange grant type.
         """
-        temp_password = secrets.token_urlsafe(32)
-
         async with httpx.AsyncClient(timeout=15.0) as client:
             # 1. Get the username
             r = await client.get(
@@ -183,33 +179,19 @@ class KeycloakService:
             r.raise_for_status()
             username = r.json().get("username") or r.json().get("email")
 
-            # 2. Set a temporary random password
-            r = await client.put(
-                f"{self._admin_url}/users/{user_id}/reset-password",
-                json={"type": "password", "value": temp_password, "temporary": False},
-                headers={"Authorization": f"Bearer {admin_token}"},
-            )
-            r.raise_for_status()
-
-            # 3. Obtain tokens via password grant
+            # 2. Perform token-exchange
             r = await client.post(
                 f"{self._realm_url}/protocol/openid-connect/token",
                 data={
-                    "grant_type": "password",
+                    "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
-                    "username": username,
-                    "password": temp_password,
+                    "requested_subject": username,
+                    "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 },
             )
             r.raise_for_status()
             tokens = r.json()
-
-            # 4. Remove the temporary password so the account has no stored credential
-            await client.delete(
-                f"{self._admin_url}/users/{user_id}/credentials",
-                headers={"Authorization": f"Bearer {admin_token}"},
-            )
 
         return tokens
 
