@@ -3,6 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:app_links/app_links.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/wallet_service.dart';
+import '../models/user.dart';
+import '../models/credential.dart';
 
 class WalletController with ChangeNotifier, WidgetsBindingObserver {
   final WalletService _walletService = WalletService();
@@ -11,7 +13,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
 
   // Estado
   bool _isLoading = false;
-  List<dynamic> _credentials = [];
+  List<CredentialModel> _credentials = [];
   bool _isAuthenticated = false;
   String _userToken = '';
   String _walletId = '';
@@ -19,23 +21,21 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
   Uri? _pendingDeepLink;
   bool _startupDone = false;
   String _pendingOpenId4VP = '';
-  String _poblacion = '';
-  String _userName = '';
-  String _userEmail = '';
-  String _keycloakUserId = '';
+  UserModel? _user;
 
   // Getters
   bool get isLoading => _isLoading;
-  List<dynamic> get credentials => _credentials;
+  List<CredentialModel> get credentials => _credentials;
   bool get isAuthenticated => _isAuthenticated;
   String get userToken => _userToken;
   String get walletId => _walletId;
   String get currentCallback => _currentCallback;
   String get pendingOpenId4VP => _pendingOpenId4VP;
-  String get poblacion => _poblacion;
-  String get userName => _userName;
-  String get userEmail => _userEmail;
-  String get keycloakUserId => _keycloakUserId;
+  UserModel? get user => _user;
+  String get poblacion => _user?.poblacion ?? '';
+  String get userName => _user?.name ?? '';
+  String get userEmail => _user?.email ?? '';
+  String get keycloakUserId => _user?.keycloakUserId ?? '';
 
   WalletController() {
     WidgetsBinding.instance.addObserver(this);
@@ -72,17 +72,27 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
         _walletId = wid;
 
         // Read user info from local storage
-        _userEmail = await _storage.read(key: 'wallet_user_email') ?? '';
-        _userName = await _storage.read(key: 'wallet_user_name') ?? '';
-        _keycloakUserId = await _storage.read(key: 'wallet_user_keycloak_id') ?? '';
+        String email = await _storage.read(key: 'wallet_user_email') ?? '';
+        String name = await _storage.read(key: 'wallet_user_name') ?? '';
+        String keycloakUid = await _storage.read(key: 'wallet_user_keycloak_id') ?? '';
+        String? p = await _storage.read(key: 'wallet_user_poblacion');
+
+        if (email.isNotEmpty || name.isNotEmpty || keycloakUid.isNotEmpty) {
+          _user = UserModel(
+            email: email,
+            name: name,
+            keycloakUserId: keycloakUid,
+            poblacion: p,
+          );
+        }
 
         // If info is missing, fetch and save it
-        if (_userEmail.isEmpty || _userName.isEmpty || _keycloakUserId.isEmpty) {
+        if (_user == null || _user!.email.isEmpty || _user!.name.isEmpty || _user!.keycloakUserId.isEmpty) {
           await _fetchAndSaveUserInfo(token);
         }
 
-        if (_userEmail.isNotEmpty) {
-          await syncLocationSettings(_walletId, _userToken, _userEmail);
+        if (_user != null && _user!.email.isNotEmpty) {
+          await syncLocationSettings(_walletId, _userToken, _user!.email);
         }
 
         await loadCredentials();
@@ -105,22 +115,14 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
     try {
       final userInfo = await _walletService.getUserInfo(token);
       if (userInfo != null) {
-        String? email = userInfo['email'];
-        String? name = userInfo['name'] ?? userInfo['given_name'] ?? userInfo['preferred_username'];
-        String? keycloakUid = userInfo['sub'];
+        await _storage.write(key: 'wallet_user_email', value: userInfo.email);
+        await _storage.write(key: 'wallet_user_name', value: userInfo.name);
+        await _storage.write(key: 'wallet_user_keycloak_id', value: userInfo.keycloakUserId);
+        if (userInfo.poblacion != null) {
+          await _storage.write(key: 'wallet_user_poblacion', value: userInfo.poblacion!);
+        }
 
-        if (email != null) {
-          await _storage.write(key: 'wallet_user_email', value: email);
-          _userEmail = email;
-        }
-        if (name != null) {
-          await _storage.write(key: 'wallet_user_name', value: name);
-          _userName = name;
-        }
-        if (keycloakUid != null) {
-          await _storage.write(key: 'wallet_user_keycloak_id', value: keycloakUid);
-          _keycloakUserId = keycloakUid;
-        }
+        _user = userInfo;
         notifyListeners();
       }
     } catch (e) {
@@ -183,7 +185,10 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
           'poblacion': tempPoblacion,
         });
         if (success) {
-          _poblacion = tempPoblacion;
+          if (_user != null) {
+            _user = _user!.copyWith(poblacion: tempPoblacion);
+            await _storage.write(key: 'wallet_user_poblacion', value: tempPoblacion);
+          }
           await _storage.delete(key: key);
         }
       } else {
@@ -191,7 +196,11 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
         if (settingsResponse != null && settingsResponse['settings'] != null) {
           final settingsMap = settingsResponse['settings'];
           if (settingsMap is Map && settingsMap['poblacion'] != null) {
-            _poblacion = settingsMap['poblacion'].toString();
+            final String p = settingsMap['poblacion'].toString();
+            if (_user != null) {
+              _user = _user!.copyWith(poblacion: p);
+              await _storage.write(key: 'wallet_user_poblacion', value: p);
+            }
           }
         }
       }
@@ -209,7 +218,6 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
       await _storage.write(key: 'wallet_token', value: token);
       await _storage.write(key: 'wallet_user_email', value: email);
       _userToken = token;
-      _userEmail = email;
       _isAuthenticated = true;
 
       // Fetch and save full user info (name, Keycloak ID)
@@ -218,7 +226,9 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
       String? wid = await _walletService.getDefaultWallet(token);
       if (wid != null) {
         _walletId = wid;
-        await syncLocationSettings(wid, token, email);
+        if (_user != null) {
+          await syncLocationSettings(wid, token, _user!.email);
+        }
         await loadCredentials();
       }
       _isLoading = false;
@@ -249,11 +259,11 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
     notifyListeners();
 
     try {
-      final List<dynamic> creds = await _walletService.getCredentials(
+      final List<CredentialModel> creds = await _walletService.getCredentials(
         _walletId,
         _userToken,
       );
-      creds.sort((a, b) => (b['addedOn'] ?? "").compareTo(a['addedOn'] ?? ""));
+      creds.sort((a, b) => b.addedOn.compareTo(a.addedOn));
       _credentials = creds;
     } catch (e) {
       print("Error loading credentials: $e");
@@ -269,7 +279,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
       notifyListeners();
 
       List<String> credentialIds = _credentials
-          .map<String>((c) => c['id']?.toString() ?? '')
+          .map<String>((c) => c.id)
           .where((id) => id.isNotEmpty)
           .toList();
 
@@ -306,7 +316,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
     _isLoading = true;
     notifyListeners();
 
-    if (_poblacion.isEmpty) {
+    if (_user?.poblacion == null || _user!.poblacion!.isEmpty) {
       String? email = await _storage.read(key: 'wallet_user_email');
       if (email != null) {
         await syncLocationSettings(_walletId, _userToken, email);
@@ -316,7 +326,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
     bool success = await _walletService.requestCredential(
       _walletId,
       _userToken,
-      poblacion: _poblacion,
+      poblacion: poblacion,
     );
     if (success) await loadCredentials();
     _isLoading = false;
@@ -329,14 +339,12 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
     await _storage.delete(key: 'wallet_user_email');
     await _storage.delete(key: 'wallet_user_name');
     await _storage.delete(key: 'wallet_user_keycloak_id');
+    await _storage.delete(key: 'wallet_user_poblacion');
     _isAuthenticated = false;
     _userToken = '';
     _credentials = [];
     _walletId = '';
-    _poblacion = '';
-    _userName = '';
-    _userEmail = '';
-    _keycloakUserId = '';
+    _user = null;
     notifyListeners();
   }
 }

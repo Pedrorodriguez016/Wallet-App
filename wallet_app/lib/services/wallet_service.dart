@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../models/user.dart';
+import '../models/credential.dart';
 
 class WalletService {
   final Dio _dio = Dio(
@@ -66,13 +68,16 @@ class WalletService {
     }
   }
 
-  Future<Map<String, dynamic>?> getUserInfo(String token) async {
+  Future<UserModel?> getUserInfo(String token) async {
     try {
       final response = await _dio.get(
         '/auth/user-info',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      return response.data;
+      if (response.data != null) {
+        return UserModel.fromJson(Map<String, dynamic>.from(response.data));
+      }
+      return null;
     } catch (e) {
       return null;
     }
@@ -99,13 +104,18 @@ class WalletService {
     }
   }
 
-  Future<List<dynamic>> getCredentials(String walletId, String token) async {
+  Future<List<CredentialModel>> getCredentials(String walletId, String token) async {
     try {
       final response = await _dio.get(
         '/wallet/$walletId/credentials',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      return response.data;
+      if (response.data is List) {
+        return (response.data as List)
+            .map((c) => CredentialModel.fromJson(Map<String, dynamic>.from(c)))
+            .toList();
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -132,8 +142,8 @@ class WalletService {
 
       // 2. User Info
       final userInfo = await getUserInfo(token);
-      final String userEmail = userInfo?['email'] ?? "usuari@comercio.local";
-      final String userName = userInfo?['name'] ?? "Usuari Comerç";
+      final String userEmail = userInfo?.email ?? "usuari@comercio.local";
+      final String userName = userInfo?.name ?? "Usuari Comerç";
 
       // 3. Issue Offer via our new Backend
       final offerResponse = await _dio.post(

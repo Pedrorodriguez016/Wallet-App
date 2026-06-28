@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/wallet_controller.dart';
 import '../theme/app_theme.dart';
+import '../models/credential.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -101,33 +102,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCredentialCard(dynamic cred) {
-    final Map<String, dynamic> doc = Map<String, dynamic>.from(
-      cred['parsedDocument'] ?? cred,
-    );
-    final Map<String, dynamic> subject = Map<String, dynamic>.from(
-      doc['credentialSubject'] ?? {},
-    );
-
-    String typeDisplay = "Credencial Comerç";
-    final types = doc['type'] ?? doc['credentialData']?['type'];
-    if (types is List && types.isNotEmpty) {
-      typeDisplay = types.last.toString();
-    }
-    if (typeDisplay == "ComercioCredencial") {
-      typeDisplay = "Credencial Comerç";
-    }
-
-    String nameDisplay =
-        (subject['name'] ??
-                subject['fullName'] ??
-                subject['firstName'] ??
-                "Usuari Comerç")
-            .toString();
-    final String? poblacionDisplay = subject['poblacion']?.toString();
-    String idDisplay = (doc['id'] ?? cred['id'] ?? "No ID").toString();
-    if (idDisplay.length > 20)
+  Widget _buildCredentialCard(CredentialModel cred) {
+    String idDisplay = cred.id;
+    if (idDisplay.length > 20) {
       idDisplay = "ID: ${idDisplay.substring(0, 20)}...";
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -154,7 +133,7 @@ class HomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                typeDisplay,
+                cred.type,
                 style: GoogleFonts.notoSerif(
                   color: AppColors.tertiary,
                   fontSize: 18,
@@ -174,14 +153,14 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           Text(
-            nameDisplay,
+            cred.name,
             style: GoogleFonts.manrope(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          if (poblacionDisplay != null && poblacionDisplay.isNotEmpty) ...[
+          if (cred.poblacion != null && cred.poblacion!.isNotEmpty) ...[
             const SizedBox(height: 15),
             Text(
               "POBLACIÓ",
@@ -201,7 +180,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  poblacionDisplay,
+                  cred.poblacion!,
                   style: GoogleFonts.manrope(
                     color: Colors.white,
                     fontSize: 16,
