@@ -34,7 +34,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: vc-keycloak
-    command: start-dev --import-realm --features=token-exchange
+    command: start-dev --import-realm --features=token-exchange,admin-fine-grained-authz
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -129,12 +129,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: vc-backend
+    env_file:
+      - ./backend/.env
     environment:
       - APP_ENV=${APP_ENV:-development}
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_REALM=${KEYCLOAK_REALM:-vc-wallet}
       - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-vc-wallet-backend}
-      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-change-me}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-change-me-in-production}
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
       - WALTID_ISSUER_URL=http://waltid-issuer:3000
