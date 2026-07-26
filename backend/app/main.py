@@ -25,13 +25,13 @@ app = FastAPI(
     description="Backend wrapper for Verifiable Credentials Wallet with Keycloak + walt.id",
     version="0.1.0",
     lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
-)
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    )
 
 # CORS configurations
-origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip() and origin.strip() != "*"]
 print("Configured CORS origins:", origins)
 
 app.add_middleware(
@@ -42,5 +42,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Routes
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="")

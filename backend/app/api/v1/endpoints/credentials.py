@@ -3,10 +3,11 @@ Credentials Endpoints
 Handles credential issuance via walt.id Issuer API (OID4VCI).
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.services.issuer_service import IssuerService
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -22,7 +23,10 @@ class CredentialOfferResponse(BaseModel):
 
 
 @router.post("/offer", response_model=CredentialOfferResponse)
-async def create_credential_offer(request: CredentialOfferRequest):
+async def create_credential_offer(
+    request: CredentialOfferRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Creates a credential offer that can be claimed by a wallet.
     Returns an OID4VCI offer URL (displayable as QR or deep link).
@@ -36,6 +40,7 @@ async def create_credential_offer(request: CredentialOfferRequest):
         offer_url=offer_url,
         credential_type=request.credential_type,
     )
+
 
 
 @router.get("/types")

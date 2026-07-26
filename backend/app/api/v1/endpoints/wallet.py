@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Depends
 from pydantic import BaseModel
 import httpx
 
 from app.services.wallet_service import WalletService
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -25,7 +26,7 @@ async def register_wallet(request: WalletCreateRequest):
 
 
 @router.get("/accounts/wallets")
-async def list_wallets(authorization: str | None = Header(None)):
+async def list_wallets(authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Lists all wallets for the authenticated user."""
     wallet = WalletService()
     token = ""
@@ -40,7 +41,7 @@ async def list_wallets(authorization: str | None = Header(None)):
 
 
 @router.get("/{wallet_id}/credentials")
-async def list_wallet_credentials(wallet_id: str, authorization: str | None = Header(None)):
+async def list_wallet_credentials(wallet_id: str, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Lists all credentials stored in a wallet."""
     wallet = WalletService()
     token = ""
@@ -55,7 +56,7 @@ async def list_wallet_credentials(wallet_id: str, authorization: str | None = He
 
 
 @router.get("/{wallet_id}/dids")
-async def list_wallet_dids(wallet_id: str, authorization: str | None = Header(None)):
+async def list_wallet_dids(wallet_id: str, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Lists all DIDs associated with a wallet."""
     wallet = WalletService()
     token = ""
@@ -70,7 +71,7 @@ async def list_wallet_dids(wallet_id: str, authorization: str | None = Header(No
 
 
 @router.post("/{wallet_id}/dids/create/key")
-async def create_did_key(wallet_id: str, authorization: str | None = Header(None)):
+async def create_did_key(wallet_id: str, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Creates a default did:key DID inside the wallet."""
     wallet = WalletService()
     token = ""
@@ -85,7 +86,7 @@ async def create_did_key(wallet_id: str, authorization: str | None = Header(None
 
 
 @router.post("/{wallet_id}/exchange/useOfferRequest")
-async def use_offer_request(wallet_id: str, request: Request, authorization: str | None = Header(None)):
+async def use_offer_request(wallet_id: str, request: Request, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Claims a credential offer using OID4VCI (plain text URL body)."""
     body_bytes = await request.body()
     offer_url = body_bytes.decode("utf-8")
@@ -103,7 +104,7 @@ async def use_offer_request(wallet_id: str, request: Request, authorization: str
 
 
 @router.post("/{wallet_id}/exchange/usePresentationRequest")
-async def use_presentation_request(wallet_id: str, payload: dict, authorization: str | None = Header(None)):
+async def use_presentation_request(wallet_id: str, payload: dict, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Presents a credential using OID4VP."""
     wallet = WalletService()
     token = ""
@@ -123,7 +124,7 @@ async def use_presentation_request(wallet_id: str, payload: dict, authorization:
 
 
 @router.get("/{wallet_id}/settings")
-async def get_wallet_settings(wallet_id: str, authorization: str | None = Header(None)):
+async def get_wallet_settings(wallet_id: str, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Retrieves settings for a wallet."""
     wallet = WalletService()
     token = ""
@@ -138,7 +139,7 @@ async def get_wallet_settings(wallet_id: str, authorization: str | None = Header
 
 
 @router.post("/{wallet_id}/settings")
-async def update_wallet_settings(wallet_id: str, payload: dict, authorization: str | None = Header(None)):
+async def update_wallet_settings(wallet_id: str, payload: dict, authorization: str | None = Header(None), current_user: dict = Depends(get_current_user)):
     """Updates settings for a wallet."""
     wallet = WalletService()
     token = ""
