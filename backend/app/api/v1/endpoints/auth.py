@@ -38,19 +38,19 @@ class VerificationCallbackRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: str = ""
     token_type: str = "Bearer"
     expires_in: int
 
 
 class RegisterRequest(BaseModel):
     name: str
+    lastName: str = ""
     email: str
     password: str
     poblacion: str = "Barcelona"
 
 
-# ── 1. Create QR Login Session ──────────────────────────────────────────────
 @router.post("/qr-session", response_model=QRSessionResponse)
 async def create_qr_session():
     """
@@ -59,14 +59,23 @@ async def create_qr_session():
     - Returns the openid4vp:// URL (to display as QR code)
     - Stores session state for later verification
     """
+    now = datetime.now(timezone.utc)
+    expired_keys = [
+        k for k, v in qr_sessions.items() 
+        if datetime.fromisoformat(v["expires_at"]) < now
+    ]
+    for k in expired_keys:
+        del qr_sessions[k]
+
     session_id = str(uuid.uuid4())
     expires_at = datetime.now(timezone.utc) + timedelta(
         seconds=settings.QR_SESSION_TTL_SECONDS
     )
 
+
     verifier = VerifierService()
-    # Build callback URL pointing back to the backend
-    callback_url = f"http://localhost:8000/api/v1/auth/callback"
+
+    callback_url = f"http://localhost:8000/auth/callback"
 
     oid4vp_url = await verifier.create_verification_request(
         session_id=session_id,
@@ -74,12 +83,12 @@ async def create_qr_session():
         callback_url=callback_url,
     )
 
-    # Extract state from URL if the verifier generated its own
+
     qs = urllib.parse.parse_qs(urllib.parse.urlparse(oid4vp_url).query)
     verifier_state = qs.get("state", [session_id])[0]
 
     qr_sessions[session_id] = {
-        "status": "pending",  # pending | scanned | verified | expired
+        "status": "pending", 
         "verifier_state": verifier_state,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": expires_at.isoformat(),
@@ -95,7 +104,7 @@ async def create_qr_session():
     )
 
 
-# ── 2. WebSocket for real-time QR scan status ───────────────────────────────
+
 @router.websocket("/qr-session/{session_id}/ws")
 async def qr_session_ws(websocket: WebSocket, session_id: str):
     """
@@ -110,7 +119,7 @@ async def qr_session_ws(websocket: WebSocket, session_id: str):
                 await websocket.send_json({"status": "not_found"})
                 break
 
-            # Poll the verifier if still pending
+
             if session["status"] == "pending" and session.get("verifier_state"):
                 try:
                     verifier = VerifierService()
@@ -121,7 +130,7 @@ async def qr_session_ws(websocket: WebSocket, session_id: str):
                         session["status"] = "verified"
                         session["user_claims"] = result.get("claims", {})
                 except Exception:
-                    pass  # Keep polling until ready
+                    pass  
             
             await websocket.send_json({"status": session["status"]})
 
@@ -135,7 +144,7 @@ async def qr_session_ws(websocket: WebSocket, session_id: str):
         pass
 
 
-# ── 3. Verification Callback (from walt.id Verifier) ────────────────────────
+
 @router.post("/callback")
 async def verification_callback(request: VerificationCallbackRequest):
     """
@@ -165,7 +174,7 @@ async def verification_callback(request: VerificationCallbackRequest):
     return {"status": session["status"]}
 
 
-# ── 4. Exchange verified session for Keycloak tokens ────────────────────────
+
 @router.post("/token", response_model=TokenResponse)
 async def exchange_for_token(session_id: str):
     """
@@ -191,12 +200,12 @@ async def exchange_for_token(session_id: str):
         claims=session["user_claims"]
     )
 
-    # Cleanup session
+
     del qr_sessions[session_id]
 
     return TokenResponse(
         access_token=tokens["access_token"],
-        refresh_token=tokens["refresh_token"],
+        refresh_token=tokens.get("refresh_token", ""),
         expires_in=tokens.get("expires_in", 300),
     )
 
@@ -222,7 +231,7 @@ async def register(request: RegisterRequest):
         await wallet.register_keycloak(email=request.email, password=request.password, admin_token=admin_token)
         
         # Step 1.5: Finalize user setup in Keycloak (verify email, make password permanent)
-        await keycloak.finalize_user_setup(email=request.email, name=request.name, password=request.password)
+        await keycloak.finalize_user_setup(email=request.email, name=request.name, last_name=request.lastName, password=request.password)
     except httpx.HTTPStatusError as exc:
 
         if exc.response.status_code == 409:
@@ -275,6 +284,7 @@ async def register(request: RegisterRequest):
             claims={
                 "id": user_did,
                 "name": request.name,
+                "lastName": request.lastName,
                 "email": request.email,
                 "poblacion": request.poblacion,
             },
@@ -295,7 +305,7 @@ async def register(request: RegisterRequest):
     }
 
 
-# ── Proxy endpoints to walt.id Wallet API for Flutter compatibility ───────────
+
 
 @router.get("/keycloak/token")
 async def proxy_keycloak_token():

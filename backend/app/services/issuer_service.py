@@ -27,20 +27,17 @@ class IssuerService:
         if claims is None:
             claims = {}
 
+        import json
+        jwk = json.loads(settings.WALTID_ISSUER_KEY_JWK)
+
         # Build the issuance request
         # The credentialData follows the W3C VC data model
         payload = {
             "issuerKey": {
                 "type": "jwk",
-                "jwk": {
-                    "kty": "OKP",
-                    "d": "mDhpwaH6JYSrD2Bq7Cs-pzmsjlLj4EOhxyI-9DM1mFI",
-                    "crv": "Ed25519",
-                    "kid": "Wst-oAE-zBMV07eodtgVmmPDqYjwsxFOjaCI3VPnMVY",
-                    "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
-                },
+                "jwk": jwk,
             },
-            "issuerDid": "did:key:z6MkjoRhq1jSNJdLiruSXrFFxagqrztZaXHqHGUTKJbcNywp",
+            "issuerDid": settings.WALTID_ISSUER_DID,
             "credentialConfigurationId": f"{credential_type}_jwt_vc_json",
             "credentialData": {
                 "@context": [
