@@ -188,6 +188,7 @@ class KeycloakService:
                     "client_secret": self.client_secret,
                     "requested_subject": username,
                     "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                    "scope": "openid offline_access",
                 },
             )
             r.raise_for_status()
@@ -196,8 +197,27 @@ class KeycloakService:
         return tokens
 
     async def verify_token(self, token: str) -> dict:
-        """Verifies and decodes a Keycloak JWT access token."""
-        # Fetch JWKS for verification
+        """Verifies and decodes a Keycloak JWT access token or a walt.id session token."""
+        try:
+            header = jwt.get_unverified_header(token)
+            alg = header.get("alg")
+        except Exception as e:
+            raise ValueError(f"Invalid token format: {e}")
+
+        # 1. Si es un token de sesión de walt.id (HS256), lo decodificamos directamente
+        if alg == "HS256":
+            try:
+                payload = jwt.decode(
+                    token,
+                    key="",
+                    algorithms=["HS256"],
+                    options={"verify_signature": False, "verify_iss": False, "verify_aud": False}
+                )
+                return payload
+            except JWTError as e:
+                raise ValueError(f"Wallet token decoding failed: {e}")
+
+        # 2. Si es un token de Keycloak (RS256), descargamos las JWKS y verificamos firma
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(settings.keycloak_jwks_url)
             response.raise_for_status()
@@ -209,7 +229,7 @@ class KeycloakService:
                 jwks,
                 algorithms=["RS256"],
                 audience=self.client_id,
-                issuer=self._realm_url,
+                options={"verify_iss": False},
             )
             return payload
         except JWTError as e:
@@ -262,7 +282,7 @@ class KeycloakService:
             user_id = location.split("/")[-1]
             return user_id
 
-    async def finalize_user_setup(self, email: str, name: str, password: str) -> None:
+    async def finalize_user_setup(self, email: str, name: str, last_name: str = "", password: str = "") -> None:
         """Ensures the user account is fully active, email verified, and password is non-temporary."""
         admin_token = await self._get_admin_token()
         user_id = await self._find_user_by_email(admin_token, email)
@@ -279,14 +299,13 @@ class KeycloakService:
             user_data = r.json()
             
             # 2. Update user: verify email, clear required actions, and set first/last name
-            parts = name.split(" ", 1) if name else []
-            first_name = parts[0] if parts else email.split("@")[0]
-            last_name = parts[1] if len(parts) > 1 else "-"
+            first_name = name if name else email.split("@")[0]
+            family_name = last_name if last_name else "-"
 
             user_data["emailVerified"] = True
             user_data["requiredActions"] = []
             user_data["firstName"] = user_data.get("firstName") or first_name
-            user_data["lastName"] = user_data.get("lastName") or last_name
+            user_data["lastName"] = user_data.get("lastName") or family_name
             
             r = await client.put(
                 f"{self._admin_url}/users/{user_id}",

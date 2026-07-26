@@ -22,10 +22,21 @@ async def get_current_user(
     try:
         payload = await keycloak.verify_token(credentials.credentials)
         return payload
-    except ValueError:
+    except ValueError as e:
+        from jose import jwt
+        try:
+            unverified_header = jwt.get_unverified_header(credentials.credentials)
+            unverified_claims = jwt.get_unverified_claims(credentials.credentials)
+        except Exception as ex:
+            unverified_header = f"failed to parse header: {ex}"
+            unverified_claims = f"failed to parse claims: {ex}"
+        print(f"DEBUG: Token: {credentials.credentials[:30]}...[truncated]")
+        print(f"DEBUG: Unverified Header: {unverified_header}")
+        print(f"DEBUG: Unverified Claims: {unverified_claims}")
+        print(f"DEBUG: Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail=f"Invalid or expired token: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
