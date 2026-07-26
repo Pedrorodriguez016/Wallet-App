@@ -50,12 +50,13 @@ class WalletService {
   }
 
   /// Registro: crea el usuario y emite/guarda la credencial ComercioCredencial en el backend
-  Future<bool> register(String name, String email, String password, {String poblacion = 'Barcelona'}) async {
+  Future<bool> register(String name, String email, String password, {String lastName = '', String poblacion = 'Barcelona'}) async {
     try {
       final response = await _dio.post(
         '/auth/register',
         data: {
           'name': name.trim(),
+          'lastName': lastName.trim(),
           'email': email.trim(),
           'password': password.trim(),
           'poblacion': poblacion.trim().isNotEmpty ? poblacion.trim() : 'Barcelona',
@@ -236,6 +237,22 @@ class WalletService {
     } catch (e) {
       print('Error en updateWalletSettings: $e');
       return false;
+    }
+  }
+
+  Future<String?> getUserDid(String walletId, String token) async {
+    try {
+      final response = await _dio.get(
+        '/wallet/$walletId/dids',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.data is List && response.data.isNotEmpty) {
+        return response.data[0]['did']?.toString();
+      }
+      return null;
+    } catch (e) {
+      print('Error en getUserDid: $e');
+      return null;
     }
   }
 }

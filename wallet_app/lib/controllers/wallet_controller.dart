@@ -22,6 +22,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
   bool _startupDone = false;
   String _pendingOpenId4VP = '';
   UserModel? _user;
+  String _userDid = '';
 
   // Getters
   bool get isLoading => _isLoading;
@@ -32,6 +33,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
   String get currentCallback => _currentCallback;
   String get pendingOpenId4VP => _pendingOpenId4VP;
   UserModel? get user => _user;
+  String get userDid => _userDid;
   String get poblacion => _user?.poblacion ?? '';
   String get userName => _user?.name ?? '';
   String get userEmail => _user?.email ?? '';
@@ -95,6 +97,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
           await syncLocationSettings(_walletId, _userToken, _user!.email);
         }
 
+        await loadUserDid();
         await loadCredentials();
       } else {
         await _storage.delete(key: 'wallet_token');
@@ -229,6 +232,7 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
         if (_user != null) {
           await syncLocationSettings(wid, token, _user!.email);
         }
+        await loadUserDid();
         await loadCredentials();
       }
       _isLoading = false;
@@ -345,6 +349,48 @@ class WalletController with ChangeNotifier, WidgetsBindingObserver {
     _credentials = [];
     _walletId = '';
     _user = null;
+    _userDid = '';
     notifyListeners();
+  }
+
+  Future<void> loadUserDid() async {
+    if (_walletId.isEmpty || _userToken.isEmpty) return;
+    try {
+      final did = await _walletService.getUserDid(_walletId, _userToken);
+      if (did != null) {
+        _userDid = did;
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Error loading user DID: $e");
+    }
+  }
+
+  Future<bool> updatePoblacion(String nuevaPoblacion) async {
+    if (_walletId.isEmpty || _userToken.isEmpty) return false;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      bool success = await _walletService.updateWalletSettings(_walletId, _userToken, {
+        'poblacion': nuevaPoblacion,
+      });
+      if (success) {
+        if (_user != null) {
+          _user = _user!.copyWith(poblacion: nuevaPoblacion);
+          await _storage.write(key: 'wallet_user_poblacion', value: nuevaPoblacion);
+        }
+        await loadCredentials();
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      print("Error updating location: $e");
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 }

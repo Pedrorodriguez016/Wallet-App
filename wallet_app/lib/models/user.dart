@@ -1,12 +1,14 @@
 class UserModel {
   final String email;
   final String name;
+  final String lastName;
   final String keycloakUserId;
   final String? poblacion;
 
   UserModel({
     required this.email,
     required this.name,
+    this.lastName = '',
     required this.keycloakUserId,
     this.poblacion,
   });
@@ -15,6 +17,7 @@ class UserModel {
     return UserModel(
       email: (json['email'] ?? '').toString().trim(),
       name: (json['name'] ?? json['given_name'] ?? json['preferred_username'] ?? '').toString().trim(),
+      lastName: (json['lastName'] ?? json['family_name'] ?? '').toString().trim(),
       keycloakUserId: (json['sub'] ?? '').toString().trim(),
       poblacion: poblacion?.trim(),
     );
@@ -23,12 +26,14 @@ class UserModel {
   UserModel copyWith({
     String? email,
     String? name,
+    String? lastName,
     String? keycloakUserId,
     String? poblacion,
   }) {
     return UserModel(
       email: email ?? this.email,
       name: name ?? this.name,
+      lastName: lastName ?? this.lastName,
       keycloakUserId: keycloakUserId ?? this.keycloakUserId,
       poblacion: poblacion ?? this.poblacion,
     );
@@ -38,6 +43,7 @@ class UserModel {
     return {
       'email': email,
       'name': name,
+      'lastName': lastName,
       'sub': keycloakUserId,
       if (poblacion != null) 'poblacion': poblacion,
     };

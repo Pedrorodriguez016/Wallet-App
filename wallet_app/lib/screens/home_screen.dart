@@ -23,6 +23,12 @@ class HomeScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings, color: AppColors.primary),
+            onPressed: () {
+              Navigator.of(context).pushNamed('/settings');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout, color: AppColors.primary),
             onPressed: () {
               wallet.logout();

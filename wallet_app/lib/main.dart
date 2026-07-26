@@ -6,6 +6,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/verify_identity_screen.dart';
+import 'screens/settings_screen.dart';
 import 'theme/app_theme.dart';
 import 'controllers/wallet_controller.dart';
 
@@ -38,6 +39,7 @@ class WalletApp extends StatelessWidget {
         '/home': (context) => HomeScreen(),
         '/register': (context) => RegisterScreen(),
         '/verify': (context) => const VerifyIdentityScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }
