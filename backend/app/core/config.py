@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     WALTID_WALLET_URL: str = "http://localhost:7001"
     WALTID_ISSUER_DID: str = "did:key:z6MkjoRhq1jSNJdLiruSXrFFxagqrztZaXHqHGUTKJbcNywp"
     WALTID_ISSUER_KEY_JWK: str = '{"kty": "OKP", "d": "mDhpwaH6JYSrD2Bq7Cs-pzmsjlLj4EOhxyI-9DM1mFI", "crv": "Ed25519", "kid": "Wst-oAE-zBMV07eodtgVmmPDqYjwsxFOjaCI3VPnMVY", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}'
+    ISSUER_DID: str | None = None
+    ISSUER_KEY_JWK: str | None = None
 
     # CORS
     CORS_ORIGINS: str = "http://localhost,http://localhost:8000,*"
@@ -45,6 +47,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()

@@ -12,6 +12,31 @@ class WalletService:
     def __init__(self):
         self.base_url = settings.WALTID_WALLET_URL
 
+    def get_account_id_by_email(self, email: str) -> str | None:
+        """Resolves walt.id account UUID from local DB by email."""
+        import sqlite3
+        import uuid
+        try:
+            conn = sqlite3.connect('/waltid-wallet-data/wallet.db')
+            c = conn.cursor()
+            c.execute("SELECT id FROM accounts WHERE LOWER(email) = LOWER(?)", (email.strip(),))
+            row = c.fetchone()
+            conn.close()
+            if row and row[0]:
+                return str(uuid.UUID(bytes=row[0])) if isinstance(row[0], bytes) else str(row[0])
+            return None
+        except Exception as e:
+            return None
+
+    def generate_session_token(self, user_id: str) -> str:
+        """Generates a valid walt.id session JWT token for a given user account ID."""
+        from jose import jwt
+        return jwt.encode(
+            {"sub": user_id},
+            "token-key-change-in-production!!!",
+            algorithm="HS256"
+        )
+
     async def _authenticate(self, email: str, password: str) -> str:
         """Authenticates with the wallet API and returns a session token."""
         async with httpx.AsyncClient(timeout=15.0) as client:

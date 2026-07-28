@@ -145,6 +145,7 @@ services:
       - CORS_ORIGINS=http://localhost,http://localhost:8000,*
     volumes:
       - ./backend:/app
+      - waltid_wallet_data:/waltid-wallet-data:ro
     ports:
       - "8000:8000"
     depends_on:
