@@ -62,29 +62,6 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final success = await wallet.requestNewCredential();
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  success
-                      ? "Credencial rebuda!"
-                      : "Error al sol·licitar la credencial",
-                ),
-                backgroundColor: success ? Colors.green : Colors.red,
-              ),
-            );
-          }
-        },
-        backgroundColor: AppColors.secondary,
-        icon: const Icon(Icons.add_card, color: Colors.white),
-        label: const Text(
-          "Sol·licitar identitat",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
     );
   }
 
