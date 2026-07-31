@@ -157,6 +157,26 @@ services:
     networks:
       - vc-network
 
+# 
+# NGROK
+#
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: vc-ngrok
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    command:
+      - "http"
+      - "--url=https://reaffirm-landside-campfire.ngrok-free.dev"
+      - "backend:8000"
+    ports:
+      - "4040:4040"
+    depends_on:
+      - backend
+    networks:
+      - vc-network
+
 # ═════════════════════════════════════════════════════════════════════════════
 # VOLUMES & NETWORKS
 # ═════════════════════════════════════════════════════════════════════════════
