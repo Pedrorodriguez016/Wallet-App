@@ -12,29 +12,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class OdooCompletionRequest(BaseModel):
+class OdooCredentialRequest(BaseModel):
     email: str
     event_id: str
     event_name: str
     partner_name: str
     company_name: str | None = None
 
-
-@router.post("/odoo-completion")
-@router.post("/api/v1/events/odoo-completion")
+@router.post("/odoo-credential")
 async def handle_odoo_event_completion(
-    payload: OdooCompletionRequest,
-    x_api_key: str | None = Header(None)
+    payload: OdooCredentialRequest,
 ):
     """
     Called by Odoo (BCNMercatus_eventos) when an organizer confirms event attendance.
     Emits an EventCredencial via walt.id Issuer API and claims it into the user's wallet.
     """
-    # 1. Valida la API key enviada por Odoo (si está configurada)
-    expected_key = getattr(settings, "ODOO_INTEGRATION_KEY", "super-secret-key")
-    if x_api_key and x_api_key != expected_key:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-
     email = payload.email.strip()
     wallet_service = WalletService()
     keycloak_service = KeycloakService()
