@@ -1,0 +1,36 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Backend .dockerignore
+# Prevents unnecessary/sensitive files from being copied into the image
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment files (secrets)
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker (avoid recursive builds)
+Dockerfile
+docker-compose*.yml
+.dockerignore
