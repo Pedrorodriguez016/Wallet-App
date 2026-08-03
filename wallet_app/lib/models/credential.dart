@@ -3,6 +3,8 @@ class CredentialModel {
   final String type;
   final String name;
   final String? poblacion;
+  final String? eventName;
+  final String? companyName;
   final String addedOn;
   final Map<String, dynamic> raw;
 
@@ -11,6 +13,8 @@ class CredentialModel {
     required this.type,
     required this.name,
     this.poblacion,
+    this.eventName,
+    this.companyName,
     required this.addedOn,
     required this.raw,
   });
@@ -33,13 +37,19 @@ class CredentialModel {
       typeDisplay = "Credencial Comerç";
     }
 
-    final String nameDisplay = (subject['name'] ??
-            subject['fullName'] ??
-            subject['firstName'] ??
-            "Usuari Comerç")
-        .toString();
+    final String nameDisplay =
+        (subject['name'] ??
+                subject['fullName'] ??
+                subject['firstName'] ??
+                "Usuari Comerç")
+            .toString();
 
     final String? poblacionDisplay = subject['poblacion']?.toString();
+    final String? eventNameDisplay =
+        (subject['eventName'] ?? subject['event_name'])?.toString();
+    final String? companyNameDisplay =
+        (subject['companyName'] ?? subject['company_name'])?.toString();
+
     final String idDisplay = (doc['id'] ?? json['id'] ?? "No ID").toString();
     final String addedOnDisplay = (json['addedOn'] ?? "").toString();
 
@@ -48,6 +58,8 @@ class CredentialModel {
       type: typeDisplay,
       name: nameDisplay,
       poblacion: poblacionDisplay,
+      eventName: eventNameDisplay,
+      companyName: companyNameDisplay,
       addedOn: addedOnDisplay,
       raw: json,
     );
