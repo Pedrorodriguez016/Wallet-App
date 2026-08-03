@@ -17,6 +17,7 @@ class OdooCompletionRequest(BaseModel):
     event_id: str
     event_name: str
     partner_name: str
+    company_name: str | None = None
 
 
 @router.post("/odoo-completion")
@@ -90,6 +91,7 @@ async def handle_odoo_event_completion(
                 "id": user_did,
                 "email": email,
                 "name": payload.partner_name,
+                "companyName": payload.company_name,
                 "eventName": payload.event_name,
                 "eventId": payload.event_id,
                 "status": "Attended"

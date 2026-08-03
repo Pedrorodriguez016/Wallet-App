@@ -35,8 +35,6 @@ services:
     image: quay.io/keycloak/keycloak:26.0
     container_name: vc-keycloak
     command: start-dev --import-realm --features=token-exchange,admin-fine-grained-authz
-    env_file:
-      - ./backend/.env
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -46,10 +44,12 @@ services:
       KC_HOSTNAME_PORT: 8080
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT_HTTPS: "false"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     volumes:
       - ./infrastructure/keycloak/realm-export:/opt/keycloak/data/import
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,11 +132,17 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # Override URLs to use Docker-internal hostnames instead of localhost
+      - APP_ENV=${APP_ENV:-development}
       - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-vc-wallet}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-vc-wallet-backend}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-change-me-in-production}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
       - WALTID_ISSUER_URL=http://waltid-issuer:3000
       - WALTID_VERIFIER_URL=http://waltid-verifier:3000
       - WALTID_WALLET_URL=http://waltid-wallet:3000
+      - CORS_ORIGINS=http://localhost,http://localhost:8000,*
     volumes:
       - ./backend:/app
       - waltid_wallet_data:/waltid-wallet-data:ro
