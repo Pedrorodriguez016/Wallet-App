@@ -550,3 +550,60 @@ async def register_commerce_user(payload: UserRegisterRequest):
 
     return {"success": True, "message": "User registered successfully."}
 
+
+@router.post("/refresh")
+async def refresh_token(payload: dict):
+    """
+    Refreshes an expired access token using a refresh token against Keycloak.
+    Supports both vc-wallet and comercio-proximidad realms.
+    """
+    refresh_token_str = payload.get("refresh_token")
+    if not refresh_token_str:
+        raise HTTPException(status_code=400, detail="refresh_token is required")
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # 1. Try refreshing in vc-wallet realm
+        try:
+            response = await client.post(
+                settings.keycloak_token_url,
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": settings.KEYCLOAK_CLIENT_ID,
+                    "client_secret": settings.KEYCLOAK_CLIENT_SECRET,
+                    "refresh_token": refresh_token_str,
+                },
+            )
+            if response.status_code == 200:
+                tokens = response.json()
+                return {
+                    "access_token": tokens.get("access_token"),
+                    "refresh_token": tokens.get("refresh_token", refresh_token_str),
+                    "expires_in": tokens.get("expires_in", 300),
+                }
+        except Exception:
+            pass
+
+        # 2. Try refreshing in comercio-proximidad realm
+        try:
+            comercio_token_url = f"{settings.KEYCLOAK_URL}/realms/{settings.COMERCIO_KEYCLOAK_REALM}/protocol/openid-connect/token"
+            response = await client.post(
+                comercio_token_url,
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": settings.COMERCIO_KEYCLOAK_CLIENT_ID,
+                    "client_secret": settings.COMERCIO_KEYCLOAK_CLIENT_SECRET,
+                    "refresh_token": refresh_token_str,
+                },
+            )
+            if response.status_code == 200:
+                tokens = response.json()
+                return {
+                    "access_token": tokens.get("access_token"),
+                    "refresh_token": tokens.get("refresh_token", refresh_token_str),
+                    "expires_in": tokens.get("expires_in", 300),
+                }
+        except Exception:
+            pass
+
+    raise HTTPException(status_code=401, detail="Refresh token expired or invalid")
+

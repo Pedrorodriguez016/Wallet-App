@@ -241,8 +241,7 @@ class KeycloakService:
                 token,
                 jwks,
                 algorithms=["RS256"],
-                audience=self.client_id,
-                options={"verify_iss": False},
+                options={"verify_iss": False, "verify_aud": False},
             )
             return payload
         except JWTError as e:
