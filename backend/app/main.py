@@ -32,7 +32,6 @@ app = FastAPI(
 
 # CORS configurations
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip() and origin.strip() != "*"]
-print("Configured CORS origins:", origins)
 
 app.add_middleware(
     CORSMiddleware,

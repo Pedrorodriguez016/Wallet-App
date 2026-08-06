@@ -30,10 +30,6 @@ async def get_current_user(
         except Exception as ex:
             unverified_header = f"failed to parse header: {ex}"
             unverified_claims = f"failed to parse claims: {ex}"
-        print(f"DEBUG: Token: {credentials.credentials[:30]}...[truncated]")
-        print(f"DEBUG: Unverified Header: {unverified_header}")
-        print(f"DEBUG: Unverified Claims: {unverified_claims}")
-        print(f"DEBUG: Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token: {e}",

@@ -54,6 +54,23 @@ class RegisterRequest(BaseModel):
     postalCode: str = ""
 
 
+class UserLoginRequest(BaseModel):
+    """Login request for traditional commerce app users (email + password)."""
+    email: str
+    password: str
+
+
+class UserRegisterRequest(BaseModel):
+    """Registration request for traditional commerce app users."""
+    name: str
+    surnames: str = ""
+    email: str
+    password: str
+    address: str = ""
+    city: str = ""
+    postalCode: str = ""
+
+
 @router.post("/qr-session", response_model=QRSessionResponse)
 async def create_qr_session():
     """
@@ -397,4 +414,139 @@ async def proxy_user_info(authorization: str | None = Header(None)):
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ── Commerce App — Simple email+password auth (realm: comercio-proximidad) ────
+
+@router.post("/login/user/")
+async def login_commerce_user(payload: UserLoginRequest):
+    """
+    Authenticates a traditional commerce app user against the 'comercio-proximidad' Keycloak realm.
+    Uses Direct Access Grant (Resource Owner Password Credentials).
+    Returns access_token, refresh_token, and user profile data.
+    """
+    email = payload.email.strip()
+    realm_url = f"{settings.KEYCLOAK_URL}/realms/{settings.COMERCIO_KEYCLOAK_REALM}"
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # 1. Authenticate via Direct Access Grant
+        try:
+            token_response = await client.post(
+                f"{realm_url}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "password",
+                    "client_id": settings.COMERCIO_KEYCLOAK_CLIENT_ID,
+                    "client_secret": settings.COMERCIO_KEYCLOAK_CLIENT_SECRET,
+                    "username": email,
+                    "password": payload.password,
+                    "scope": "openid",
+                },
+            )
+            token_response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 401:
+                raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=exc.response.status_code, detail="Authentication failed")
+
+        tokens = token_response.json()
+        access_token = tokens["access_token"]
+
+        # 2. Fetch user profile from Keycloak userinfo endpoint
+        try:
+            userinfo_response = await client.get(
+                f"{realm_url}/protocol/openid-connect/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            userinfo_response.raise_for_status()
+            userinfo = userinfo_response.json()
+        except Exception:
+            userinfo = {}
+
+    return {
+        "token": access_token,
+        "refresh_token": tokens.get("refresh_token", ""),
+        "user": {
+            "id": userinfo.get("sub", ""),
+            "_id": userinfo.get("sub", ""),
+            "email": userinfo.get("email", email),
+            "name": userinfo.get("given_name", userinfo.get("name", email.split("@")[0])),
+            "surnames": userinfo.get("family_name", ""),
+            "city": userinfo.get("city", ""),
+            "firstLogin": False,
+        },
+    }
+
+
+@router.post("/register/user/")
+async def register_commerce_user(payload: UserRegisterRequest):
+    """
+    Registers a new traditional user in the 'comercio-proximidad' Keycloak realm.
+    Creates user with password — no wallet credentials.
+    Address, city, and postalCode are stored as Keycloak user attributes.
+    """
+    email = payload.email.strip()
+    admin_url = f"{settings.KEYCLOAK_URL}/admin/realms/{settings.COMERCIO_KEYCLOAK_REALM}"
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # 1. Get admin token from master realm
+        try:
+            admin_response = await client.post(
+                f"{settings.KEYCLOAK_URL}/realms/master/protocol/openid-connect/token",
+                data={
+                    "grant_type": "password",
+                    "client_id": "admin-cli",
+                    "username": settings.KEYCLOAK_ADMIN,
+                    "password": settings.KEYCLOAK_ADMIN_PASSWORD,
+                },
+            )
+            admin_response.raise_for_status()
+            admin_token = admin_response.json()["access_token"]
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Could not obtain admin token: {exc}")
+
+        # 2. Create user in Keycloak
+        first_name = payload.name if payload.name else payload.email.split("@")[0]
+        last_name = payload.surnames if payload.surnames else "-"
+
+        user_data = {
+            "enabled": True,
+            "email": email,
+            "emailVerified": True,
+            "firstName": first_name,
+            "lastName": last_name,
+            "username": email,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": payload.password,
+                    "temporary": False,
+                }
+            ],
+            "attributes": {
+                "auth_method": ["password"],
+                "address": [payload.address],
+                "city": [payload.city],
+                "postalCode": [payload.postalCode],
+            },
+        }
+
+        try:
+            create_response = await client.post(
+                f"{admin_url}/users",
+                json=user_data,
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Could not create user: {exc}")
+
+        if create_response.status_code == 409:
+            raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
+        if create_response.status_code not in (201, 204):
+            raise HTTPException(
+                status_code=create_response.status_code,
+                detail=f"User creation failed: {create_response.text}",
+            )
+
+    return {"success": True, "message": "User registered successfully."}
 

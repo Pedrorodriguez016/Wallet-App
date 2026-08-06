@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     KEYCLOAK_ADMIN: str = "admin"
     KEYCLOAK_ADMIN_PASSWORD: str = "admin"
 
+    COMERCIO_KEYCLOAK_REALM: str = "comercio-proximidad"
+    COMERCIO_KEYCLOAK_CLIENT_ID: str = "comercio-backend"
+    COMERCIO_KEYCLOAK_CLIENT_SECRET: str = "comercio-secret-change-in-production"
+
     # walt.id Services
     WALTID_ISSUER_URL: str = "http://localhost:7002"
     WALTID_VERIFIER_URL: str = "http://localhost:7003"
