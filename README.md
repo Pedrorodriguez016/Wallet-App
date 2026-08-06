@@ -1,4 +1,4 @@
-# VC-Wallet Platform 👛🔐 v0.2.6
+# VC-Wallet Platform 👛🔐 v0.2.7
 
 [![Docker Compose](https://img.shields.io/badge/docker--compose-v3.8-blue?logo=docker&logoColor=white)](https://docs.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
