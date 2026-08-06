@@ -54,6 +54,7 @@ class VerifierService:
             "state": session_id,
             "authorizeBaseUrl": "openid4vp://authorize",
             "responseMode": "direct_post",
+            "responseUrl": f"{settings.WALTID_VERIFIER_URL}/openid4vc/pd/{session_id}",
         }
 
         if callback_url:
