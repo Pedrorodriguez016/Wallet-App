@@ -41,6 +41,7 @@ class TokenResponse(BaseModel):
     refresh_token: str = ""
     token_type: str = "Bearer"
     expires_in: int
+    user: dict | None = None
 
 
 class RegisterRequest(BaseModel):
@@ -48,7 +49,9 @@ class RegisterRequest(BaseModel):
     lastName: str = ""
     email: str
     password: str
-    poblacion: str = "Barcelona"
+    address: str = ""
+    city: str = "Barcelona"
+    postalCode: str = ""
 
 
 @router.post("/qr-session", response_model=QRSessionResponse)
@@ -185,21 +188,21 @@ async def exchange_for_token(session_id: str):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if session["status"] == "pending":
-        verifier = VerifierService()
-        result = await verifier.verify_presentation(session_id=session["verifier_state"])
-        if result.get("valid"):
-            session["status"] = "verified"
-            session["user_claims"] = result.get("claims", {})
+    if not session.get("user_claims") and session.get("verifier_state"):
+        try:
+            verifier = VerifierService()
+            result = await verifier.verify_presentation(session_id=session["verifier_state"])
+            if result.get("claims"):
+                session["user_claims"] = result.get("claims", {})
+        except Exception:
+            pass
 
-    if session["status"] != "verified":
-        raise HTTPException(status_code=403, detail="Session not verified")
-
+    claims = session.get("user_claims", {})
+    print(f"EXCHANGE_TOKEN: Verified user claims from VP: {claims}")
     keycloak = KeycloakService()
     tokens = await keycloak.create_session_for_verified_user(
-        claims=session["user_claims"]
+        claims=claims
     )
-
 
     del qr_sessions[session_id]
 
@@ -207,6 +210,17 @@ async def exchange_for_token(session_id: str):
         access_token=tokens["access_token"],
         refresh_token=tokens.get("refresh_token", ""),
         expires_in=tokens.get("expires_in", 300),
+        user={
+            "id": claims.get("id", ""),
+            "_id": claims.get("id", ""),
+            "email": claims.get("email", ""),
+            "name": claims.get("firstName", claims.get("givenName", claims.get("given_name", claims.get("name", "").split(" ")[0]))),
+            "surnames": claims.get("lastName", claims.get("familyName", claims.get("family_name", ""))),
+            "address": claims.get("address", ""),
+            "city": claims.get("city", ""),
+            "postalCode": claims.get("postalCode", claims.get("postal_code", "")),
+            "firstLogin": False,
+        }
     )
 
 
@@ -231,9 +245,17 @@ async def register(request: RegisterRequest):
         await wallet.register_keycloak(email=request.email, password=request.password, admin_token=admin_token)
         
         # Step 1.5: Finalize user setup in Keycloak (verify email, make password permanent)
-        await keycloak.finalize_user_setup(email=request.email, name=request.name, last_name=request.lastName, password=request.password)
+        await keycloak.finalize_user_setup(
+            email=request.email,
+            name=request.name,
+            last_name=request.lastName,
+            password=request.password,
+            address=request.address,
+            city=request.city,
+            postal_code=request.postalCode,
+        )
     except httpx.HTTPStatusError as exc:
-
+        print(f"REGISTER ERROR HTTPStatusError: {exc.response.status_code} - {exc.response.text}")
         if exc.response.status_code == 409:
             raise HTTPException(
                 status_code=409,
@@ -244,6 +266,8 @@ async def register(request: RegisterRequest):
             detail=f"Could not create wallet account: {exc.response.text}",
         )
     except Exception as exc:
+        import traceback
+        print(f"REGISTER UNEXPECTED ERROR: {exc}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
 
     # Step 2: Authenticate to walt.id wallet via Keycloak OIDC login
@@ -286,7 +310,9 @@ async def register(request: RegisterRequest):
                 "name": request.name,
                 "lastName": request.lastName,
                 "email": request.email,
-                "poblacion": request.poblacion,
+                "address": request.address,
+                "city": request.city,
+                "postalCode": request.postalCode,
             },
         )
     except Exception as exc:
@@ -371,3 +397,4 @@ async def proxy_user_info(authorization: str | None = Header(None)):
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
+

@@ -64,6 +64,10 @@ class KeycloakService:
         if not user_id and did:
             user_id = await self._find_user_by_attribute(admin_token, "did", did)
 
+        address = claims.get("address", "")
+        city = claims.get("city", claims.get("poblacion", ""))
+        postal_code = claims.get("postalCode", claims.get("postal_code", ""))
+
         if not user_id:
             user_id = await self._create_user(
                 admin_token=admin_token,
@@ -72,18 +76,18 @@ class KeycloakService:
                 last_name=family_name,
                 did=did,
             )
-        else:
-            # Ensure required profile fields are set on existing users
-            await self._ensure_profile(admin_token, user_id, given_name, family_name)
+        
+        # Ensure required profile fields and attributes are set on existing/new users
+        await self._ensure_profile(admin_token, user_id, given_name, family_name, address, city, postal_code)
 
         # Step 2: Generate tokens for the user
         tokens = await self._impersonate_user(admin_token, user_id)
         return tokens
 
     async def _ensure_profile(
-        self, admin_token: str, user_id: str, first_name: str, last_name: str
+        self, admin_token: str, user_id: str, first_name: str, last_name: str, address: str = "", city: str = "", postal_code: str = ""
     ) -> None:
-        """Patches firstName/lastName on an existing user if they are missing."""
+        """Patches firstName/lastName and custom attributes on an existing user."""
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
                 f"{self._admin_url}/users/{user_id}",
@@ -91,16 +95,25 @@ class KeycloakService:
             )
             r.raise_for_status()
             user = r.json()
-            if not user.get("firstName") or not user.get("lastName"):
-                await client.put(
-                    f"{self._admin_url}/users/{user_id}",
-                    json={
-                        **user,
-                        "firstName": user.get("firstName") or first_name,
-                        "lastName": user.get("lastName") or last_name,
-                    },
-                    headers={"Authorization": f"Bearer {admin_token}"},
-                )
+            
+            attrs = user.get("attributes", {})
+            if address:
+                attrs["address"] = [address]
+            if city:
+                attrs["city"] = [city]
+            if postal_code:
+                attrs["postalCode"] = [postal_code]
+
+            await client.put(
+                f"{self._admin_url}/users/{user_id}",
+                json={
+                    **user,
+                    "firstName": user.get("firstName") or first_name,
+                    "lastName": user.get("lastName") or last_name,
+                    "attributes": attrs,
+                },
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
 
     async def _find_user_by_email(self, admin_token: str, email: str) -> str | None:
         """Finds a user by email, returns user ID or None."""
@@ -282,7 +295,7 @@ class KeycloakService:
             user_id = location.split("/")[-1]
             return user_id
 
-    async def finalize_user_setup(self, email: str, name: str, last_name: str = "", password: str = "") -> None:
+    async def finalize_user_setup(self, email: str, name: str, last_name: str = "", password: str = "", address: str = "", city: str = "", postal_code: str = "") -> None:
         """Ensures the user account is fully active, email verified, and password is non-temporary."""
         admin_token = await self._get_admin_token()
         user_id = await self._find_user_by_email(admin_token, email)
@@ -307,6 +320,16 @@ class KeycloakService:
             user_data["firstName"] = user_data.get("firstName") or first_name
             user_data["lastName"] = user_data.get("lastName") or family_name
             
+            # Keycloak attributes update
+            existing_attrs = user_data.get("attributes", {})
+            if address:
+                existing_attrs["address"] = [address]
+            if city:
+                existing_attrs["city"] = [city]
+            if postal_code:
+                existing_attrs["postalCode"] = [postal_code]
+            user_data["attributes"] = existing_attrs
+
             r = await client.put(
                 f"{self._admin_url}/users/{user_id}",
                 json=user_data,

@@ -101,15 +101,15 @@ class IssuerService:
             family = keycloak_user_info.get("family_name", "")
             full_name = f"{given} {family}".strip() or "Usuario Keycloak"
 
-        # Check for poblacion custom attribute in Keycloak attributes
+
         attrs = keycloak_user_info.get("attributes", {})
-        poblacion = attrs.get("poblacion", ["Barcelona"])[0] if "poblacion" in attrs else "Barcelona"
+        city_val = (attrs.get("city", [None])[0]) if attrs else "Barcelona"
 
         claims = {
             "id": f"did:key:{keycloak_user_info.get('sub', '')}",
             "name": full_name,
             "email": keycloak_user_info.get("email", ""),
-            "poblacion": poblacion,
+            "city": city_val,
         }
 
         return await self.create_offer(
